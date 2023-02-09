@@ -130,6 +130,7 @@ install.packages("mapedit")
 install.packages("plotKML")
 install.packages("ncdf4")
 install.packages("usethis")
+
 remotes::install_github('r-spatial/rgee', dependencies = TRUE, force = TRUE)
 
 writeLines('PATH="c:/Rtools42/usr/bin/"', con = "~/.Renviron")
@@ -1733,9 +1734,6 @@ mapview(lip2)
 summary(ap)
 
 head(ap)
-
-
-
 
 
 
