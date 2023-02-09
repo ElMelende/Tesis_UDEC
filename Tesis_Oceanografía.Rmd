@@ -107,9 +107,6 @@ install.packages("jcolors")
 install.packages("lemon")
 install.packages("tidyverse")
 install.packages("reshape2")
-install.packages("MBA")
-install.packages("mgcv")
-install.packages("OTUtable")
 install.packages("remotes")
 install_github("ranghetti/sen2r")
 install.packages("RStoolbox")
@@ -181,9 +178,6 @@ library(jcolors)
 library(lemon)
 library(tidyverse)
 library(reshape2)
-library(MBA)
-library(mgcv)
-library(OTUtable)
 library(remotes)
 library(sen2r) #sen2r()
 library(RStoolbox)
@@ -1009,41 +1003,6 @@ scale_colour_manual(values=cc)+
 facet_wrap(~month)
 return(g1)}
 #plot_climato_mes(df_long)
-```
-
-```{r hetmap Z-DSI, OBSOLETO, eval=FALSE}
-heat_var<-function(data){
-ctd <- data %>%
-mutate(date = make_date(year = year, month = month))
-ctd<-ctd %>% filter(!is.na(DSI))
-ctd <- ctd %>%
-mutate(Z  = -Z) %>%  # Correct for plotting
-dplyr::select(date, Z, DSI)
-ODV_colours <- c("#feb483", "#d31f2a", "#ffc000", "#27ab19", "#0db5e6", "#7139fe", "#d16cfa")
-ctd$date <- decimal_date(ctd$date)
-# Now we may interpolate the data
-ctd_mba <- mba.surf(ctd, no.X = 2000, no.Y = 2000, extend = T)
-dimnames(ctd_mba$xyz.est$z) <- list(ctd_mba$xyz.est$x, ctd_mba$xyz.est$y)
-ctd_mba <- melt(ctd_mba$xyz.est$z, varnames = c('date', 'Z'), value.name = 'DSI') %>%
-filter(Z < 0) %>%
-mutate(DSI = round(DSI, 1))
-g1<-ggplot(data = ctd_mba, aes(x = date, y = Z)) +
-geom_raster(aes(fill = DSI)) +
-scale_fill_gradientn(colours = rev(ODV_colours)) +
-geom_contour(aes(z = DSI), binwidth = 5, colour = "black", alpha = 0.2) +
-geom_contour(aes(z = DSI), breaks = 15, colour = "black", alpha = 0.5) +
-### Activate to see which pixels are real and not interpolated
-#geom_point(data = ctd, aes(x = date, y = Z.ajus),
-#colour = 'black', size = 0.2, alpha = 0.4, shape = 8) +
-labs(y = "depth (m)", x = NULL, fill = "DSI") +
-coord_cartesian(expand = 0)
-return(g1)
-}
-heat_var(muestra.adj)
-
-#ggsave(file="heat_p1.jpg", height = 6, width = 20, dpi = 700,  type = "cairo",
-#path = "C:/Users/Vicho/Documents/Tesis/Figuras_ploteadas")
-        
 ```
 
 
