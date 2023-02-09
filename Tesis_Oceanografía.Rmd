@@ -1,0 +1,1744 @@
+---
+title: "Tesis_Oceanografía"
+author: "Vicente Mendez"
+date: '2022-11-23'
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r Chunk 1: setup}
+knitr::knit_hooks$set(
+# modify the output
+output = function(x, options){
+# Split in lines
+lines <- unlist(strsplit(x, split = "\n"))
+#--------------------------------------------------------------------------*
+# modify the lines we expect to bleed out of the margins ----
+#--------------------------------------------------------------------------*
+# For the dsn specification
+lines <- gsub(
+pattern = "' ",
+replacement = "'\n## \t",
+x = lines
+)
+lines <- unlist(sapply(lines, strsplit, split = "\n"))
+# For the dsn file path
+lines <- ifelse(
+test = grepl("from data source ", lines),
+# Adjust so segments are split in /
+yes = gsub(
+pattern = "/([^/]*)\n",
+replacement = "/\n## \t\\1",
+# Split in fixed width segments
+x = gsub(
+pattern = "(.{,65})",
+replacement = "\\1\n",
+x = lines
+)
+),
+no = lines
+)
+# For the proj4 string specifications
+lines <- ifelse(
+test = grepl("proj4string:", lines),
+yes = gsub(
+pattern = "[+]",
+replacement = "\n## \t+",
+x = lines
+),
+no = lines
+)
+# bind the lines
+x <- paste(
+"```",
+paste0(lines, collapse = "\n"),
+"```",
+sep = "\n"
+)
+return(x)
+}
+)
+knitr::opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE, strip.white = F, echo = TRUE)
+knitr::opts_chunk$set(error = FALSE, warning = FALSE, message = FALSE)
+Sys.setlocale(category = "LC_ALL", locale = "english")
+```
+
+```{r Install Packages, eval=F}
+
+install.packages("rstatix")
+install.packages("rlang")
+install.packages("formatR")
+install.packages("shiny")
+install.packages("cowplot")
+install.packages("gridExtra")
+install.packages("ggpmisc")
+install.packages("knitr")
+install.packages("tinytex")
+install.packages("ggplot2")
+install.packages("ggalt")
+install.packages("extrafont")
+install.packages("scales")
+install.packages("reshape2")
+install.packages("datos")
+install.packages("dplyr")
+install.packages("magrittr")
+install.packages("tidyr")
+install.packages("lubridate")
+install.packages("readxl")
+install.packages("patchwork")
+install.packages("ggforce")
+install.packages("ggrepel")
+install.packages("grid")
+install.packages("magick")
+install.packages("readr")
+install.packages("devtools", repos = "https://packagemanager.rstudio.com/all/latest")
+install.packages("ggpubr")
+install.packages("trend")
+install.packages("ggstatsplot")
+install.packages("stats4")
+install.packages("Rcpp")
+install.packages("Rtools")
+install.packages("naniar")
+install.packages("gsw")
+install.packages("oce")
+install.packages("RColorBrewer")
+install.packages("jcolors")
+install.packages("lemon")
+install.packages("tidyverse")
+install.packages("reshape2")
+install.packages("MBA")
+install.packages("mgcv")
+install.packages("OTUtable")
+install.packages("remotes")
+install_github("ranghetti/sen2r")
+install.packages("RStoolbox")
+install.packages("beepr")
+install_github("rspatial/geodata")
+install_formats("rio")
+install.packages("rayshader")
+install.packages("rasterVis")
+install.packages("mapview")
+install.packages("gstat")
+install.packages("dismo")
+install.packages("spatialEco")
+install.packages("MODISTools")
+install.packages("pacman")
+install.packages("janitor")
+install.packages("dlookr")
+install.packages("mapedit")
+install.packages("plotKML")
+install.packages("ncdf4")
+install.packages("usethis")
+remotes::install_github('r-spatial/rgee', dependencies = TRUE, force = TRUE)
+
+writeLines('PATH="c:/Rtools42/usr/bin/"', con = "~/.Renviron")
+
+```
+
+```{r LIBRERIA}
+#pacman::p_load(todos los paquetes a cargar separados por ,)
+library(rstatix)
+library(rlang)
+library(formatR)
+library(shiny)
+library(cowplot)
+library(gridExtra)
+library(ggpmisc)
+library(knitr)
+library(rmarkdown)
+library(tinytex)
+library(ggplot2)
+library(ggalt)
+library(extrafont)
+library(scales)
+library(reshape2)
+library(datos)
+library(dplyr)
+library(magrittr)
+library(tidyr)
+library(lubridate)
+library(readxl)
+library(patchwork)
+library(ggforce)
+library(ggrepel)
+library(grid)
+library(magick)
+library(readr)
+library(devtools)
+library(ggpubr)
+library(trend)
+library(ggstatsplot)
+library(stats4)
+library(Rcpp)
+#library(Rtools)
+library(naniar)
+library(gsw)
+library(oce)
+library(RColorBrewer)
+library(jcolors)
+library(lemon)
+library(tidyverse)
+library(reshape2)
+library(MBA)
+library(mgcv)
+library(OTUtable)
+library(remotes)
+library(sen2r) #sen2r()
+library(RStoolbox)
+library(beepr)
+library(rio)
+library(rasterVis)
+library(rayshader)
+library(mapview)
+library(dismo)
+library(gstat)
+library(spatialEco)
+library(MODISTools)
+library(janitor)
+library(dlookr)
+library(mapedit)
+library(plotKML)
+library(ncdf4)
+library(rgee) #"C:/Users/Vicho/AppData/Local/Google/Cloud SDK/google-cloud-sdk/bin"
+```
+
+```{r Lectura de archivos Excel}
+df_18<- read_excel("C:/Users/Vicho/Documents/Tesis/Datos_Laura/SDT18_Data_actualizada.xlsx") 
+```
+
+```{r Limpieza de datos E18}
+cambiar_nombres<-function(data){
+names(data)[names(data) == "Lat(°)"] <- "lat"
+names(data)[names(data) == "Lon(°)"] <- "long"
+names(data)[names(data) == "yyyy-mm-ddThh:mm:ss.sss"] <- "date"
+names(data)[names(data) == "yyyy"] <- "year"
+names(data)[names(data) == "mm"] <- "month"
+names(data)[names(data) == "dd"] <- "day"
+names(data)[names(data) == "HH"] <- "hour"
+names(data)[names(data) == "MM"] <- "min"
+names(data)[names(data) == "Z(m)"] <- "Z"
+names(data)[names(data) == "T (ºC)"] <- "Temp"
+names(data)[names(data) == "Sal"] <- "S"
+names(data)[names(data) == "Fluor"] <- "Fluor"
+names(data)[names(data) == "O2 Winkler"] <- "O2"
+names(data)[names(data) == "NO3-"] <- "NO3"
+names(data)[names(data) == "NO2-"] <- "NO2"
+names(data)[names(data) == "PO43-"] <- "PO4"
+names(data)[names(data) == "SI (OH)4"] <- "DSI"
+data_final<- data[c("Crucero", "lat", "long", "date", "year", "month", "day", "hour", "min", "Z", "Temp", "S", "Fluor","O2", "NO3", "NO2", "PO4", "DSI")]
+data_final$Temp <- as.numeric(data_final$Temp)
+data_final$S <- as.numeric(data_final$S)
+data_final$Fluor <- as.numeric(data_final$Fluor)
+data_final$O2 <- as.numeric(data_final$O2)
+data_final$NO2 <- as.numeric(data_final$NO2)
+data_final$NO3 <- as.numeric(data_final$NO3)
+data_final$PO4 <- as.numeric(data_final$PO4)
+data_final$DSI <- as.numeric(data_final$DSI)
+return (data_final)
+}
+
+df_18<-cambiar_nombres(df_18)
+
+replace_nan<-function(data){
+data %>% mutate(across(where(is.character), ~na_if(., "NaN")))
+}
+
+df_18<-replace_nan(df_18)
+
+```
+
+```{r Muestra}
+Z.adj<-function(data){
+        df<-mutate(data, Z.ajus = case_when (Z == 0 | Z == 1 | Z == 2 ~ 0,
+                Z == 5  ~ 5,
+                Z == 10  ~ 10,
+                Z == 15  ~ 15,
+                Z == 20 | Z==25  ~ 20,
+                Z == 30  ~ 30,
+                Z == 40  ~ 40,
+                Z == 50 | Z == 51  ~ 50,
+                Z == 59 | Z == 65 | Z == 74 | Z == 75 | Z == 76 ~ 60,
+                Z == 80 | Z == 85 | Z == 86 | Z == 87 | Z == 90 | Z == 91 ~ 80,
+                TRUE ~ 9999))
+        return(df)} #añade columna Z discretizada
+
+col_periodo<-function(data){
+df<-mutate(data, periodo=if_else(year<2010, "p-MD", "MD"))
+return(df)} #añade columna de periodo
+
+col_subset<-function(data){
+#1==1997-1999
+#2==2000-2004
+#3==2005-2009
+#4==2010-2014
+#5==2015-2019
+#6==2020-2022
+df<-mutate(data, subper = case_when (year == 1997 | year == 1998 | year == 1999 ~ 1,
+year==2000 | year==2001 | year==2002 | year==2003 | year == 2004 ~ 2,
+year==2005 | year==2006 | year==2007 | year==2008 | year == 2009 ~ 3,
+year==2010 | year==2011 | year==2012 | year==2013 | year == 2014 ~ 4,
+year==2015 | year==2016 | year==2017 | year==2018 | year == 2019 ~ 5,
+year==2020 | year==2021 | year==2022 ~ 6,
+TRUE ~ 9999))
+return(df)} #añade columna subset
+
+col_season<-function(data){
+#summer==1-2-3
+#fall==4-5-6
+#winter==7-8-9
+#spring==10-11-12
+df<-mutate(data, season = case_when(month == 1 | month == 2 | month == 3 ~ "Summer",
+month == 4 | month == 5 | month == 6 ~ "Fall",
+month == 7 | month == 8 | month == 9 ~ "Winter",
+month == 10| month == 11| month == 12 ~ "Spring",
+TRUE ~ "none"))
+return(df)} #añade columna season
+
+
+col_NSI<-function(data){
+        df<-mutate(data, N_SI = (NO3+NO2)/DSI)
+        return(df)} #añade columna N_Si
+
+col_NP<-function(data){
+        df<-mutate(data, N_P = (NO3+NO2)/PO4)
+        return(df)} #añade columna N_Si
+
+col_SA<-function(data){
+        df<-mutate(data, SA = gsw_SA_from_SP(S,Z,long,lat))
+        return(df)}
+
+col_sigma<-function(data){
+        df<-mutate(data, sigma = gsw_rho_t_exact(SA,Temp,Z)-1000)
+        return(df)}
+
+
+add_cols<-function(data){
+df<-Z.adj(data)
+df<-col_SA(df)
+df<-col_sigma(df)        
+df<-col_periodo(df)
+df<-col_subset(df)
+df<-col_season(df)
+df<-col_NSI(df)
+df<-col_NP(df)
+return (df)
+}
+
+muestra.adj<-add_cols(df_18)
+
+rem_temp<-function(data){
+        data<-filter(data, Temp<25)
+        return(data)
+}
+
+muestra.adj<-rem_temp(muestra.adj)
+
+muestra_anual<-function(data){
+        df<-summarise(data %>%group_by(year, season, Z.ajus),
+        Temp= mean(Temp,na.rm=TRUE),
+        S= mean(S,na.rm=TRUE),
+        Fluor= mean(Fluor,na.rm=TRUE),
+        O2= mean(O2,na.rm=TRUE),
+        NO3= mean(NO3,na.rm=TRUE),
+        NO2= mean(NO2,na.rm=TRUE),
+        PO4= mean(PO4,na.rm=TRUE),
+        DSI= mean(DSI,na.rm=TRUE),
+        periodo= unique(periodo,na.rm=TRUE))
+        return(df)
+}
+
+muestra.adj.anual<-muestra_anual(muestra.adj)
+
+
+climatologia_data<-function(data){
+        df<-summarise(data %>%group_by(month, Z.ajus),
+                Temp= mean(Temp,na.rm=TRUE),
+                S= mean(S,na.rm=TRUE),
+                Fluor= mean(Fluor,na.rm=TRUE),
+                O2= mean(O2,na.rm=TRUE),
+                NO3= mean(NO3,na.rm=TRUE),
+                NO2= mean(NO2,na.rm=TRUE),
+                PO4= mean(PO4,na.rm=TRUE),
+                DSI= mean(DSI,na.rm=TRUE),
+                SA= mean(SA,na.rm=TRUE),
+                sigma= mean(sigma,na.rm=TRUE),
+                N_SI= mean(N_SI,na.rm=TRUE),
+                N_P= mean(N_P,na.rm=TRUE),
+        season= unique(season,na.rm=TRUE))
+return(df)}
+
+climato_df<-climatologia_data(muestra.adj)
+climato_df$N<-climato_df$NO3+climato_df$NO2
+
+df_long<-subset(climato_df, select = c("month","Z.ajus","N", "PO4","DSI"))
+
+df_long<-melt(data=df_long, id.vars = c("month","Z.ajus"), variable.name="variable", value.name="valor")
+df_long$valor<-as.numeric(df_long$valor)
+
+```
+
+```{r Promedio por Subset}
+prom_subset_season<-function(data){
+df<-summarise(data %>%group_by(subper, season, Z.ajus),
+Temp = mean(Temp,na.rm=TRUE),
+S = mean(S,na.rm=TRUE),
+Fluor = mean(Fluor,na.rm=TRUE),
+O2 = mean(O2,na.rm=TRUE),
+NO3 = mean(NO3,na.rm=TRUE),
+NO2 = mean(NO2,na.rm=TRUE),
+PO4 = mean(PO4,na.rm=TRUE),
+DSI = mean(DSI,na.rm=TRUE))
+return(df)
+}
+df_season<-prom_subset_season(muestra.adj)
+S1<-subset(df_season, subper== 3)
+```
+
+```{r perfil basico ZvsParametro}
+cc <- scales::seq_gradient_pal("darkblue", "coral", "Lab")(seq(0,1,length.out=6))
+plot_var<-function(data){
+        g1 = ggplot(data = data,aes(x =Z.ajus, y = DSI, group=factor(subper)))+
+                geom_point(aes(color=factor(subper)), size=0.8)+
+                geom_line(data=data[!is.na(data$DSI),],aes(color=factor(subper)), size=0.7)+
+                scale_y_continuous(breaks = seq(0,45,10))+  #DSI
+                scale_x_reverse(breaks = seq(0,100,20))+  # depth
+                theme_bw()+
+                theme(axis.text = element_text(size = 12, colour = 1),
+                axis.title = element_text(size = 14, colour = 1))+
+                labs(y = expression(~Si(OH)[4]),
+                x = expression(~Depth~(m)),
+                color="Subperiods")+
+                coord_flip()+
+                scale_colour_manual(values=cc, labels=c("[1997-1999]","[2000-2004]",
+                                                     "[2005-2009]","[2010-2014]",
+                                                 "[2015-2019]","[2020-2022]"))+
+                facet_wrap(~season)
+          return(g1)}
+#plot_var(df_season)
+#ggsave(file="dsi.jpg", height = 6, width = 6, dpi = 500,  type = "cairo",
+#path = "C:/Users/Vicho/Documents/Tesis/Figuras_ploteadas")
+```
+
+```{r heat_var - TEMPERATURA, eval=FALSE}
+#Crucero | lat | long | date  | year | month | day  | hour | min  | Z | Temp | 
+# S | Fluor  |  O2  | NO3 |  NO2  | PO4  | DSI  | Z.ajus  |  SA | sigma | 
+# periodo  | subper | season | N_SI |  N_P
+ctd <- muestra.adj %>% mutate(date = make_date(year = year, month = month, day = 15))
+
+ctd<- ctd %>%  filter(!is.na(Temp))
+
+ggplot(ctd, aes(x = date, y = Z, colour = Temp)) +
+  geom_point() +
+  scale_y_reverse() +
+  scale_colour_gradient2(
+    midpoint = 12, 
+    high = scales::muted("red"), 
+    low = scales::muted("blue")
+  )
+
+estimate_temp_by_date <- function(target_date, target_depth) {
+  data_for_date <- ctd %>% 
+        filter(date == target_date) %>% arrange(Z)
+  approx(data_for_date$Z, data_for_date$Temp, xout = target_depth)$y
+}
+
+temp_interp_depth <- crossing(
+  # the same dates as ctd
+  tibble(date = unique(ctd$date)),
+  # depths can now be any value
+  tibble(Z = seq(1, 90, length.out = 500))) %>%
+  group_by(date) %>%
+  mutate(Temp = estimate_temp_by_date(date[1], Z))
+
+estimate_temp_by_depth <- function(target_depth, target_date) {
+  data_for_depth <- temp_interp_depth %>% 
+    filter(Z == target_depth) %>%
+    arrange(date)
+  approx(data_for_depth$date, data_for_depth$Temp, xout = target_date)$y
+}
+
+estimate_temp_by_depth(
+  target_depth = 1, 
+  target_date = seq(ym("1997-05"), ym("2022-05"), by = 1)
+)
+
+temp_raster <- crossing(
+  # dates can now be any value
+  tibble(date = seq(ym("1997-05"), ym("2022-05"), by = 1)),
+  # depths must be the same as in temp_interp_depth
+  tibble(Z = unique(temp_interp_depth$Z))
+) %>%
+  group_by(Z) %>%
+  mutate(Temp = estimate_temp_by_depth(Z[1], date))
+
+
+
+ODV_colours2 <- c("#cc3300", "#ff6600", "#ffcc00", "#ffff00", "#99ff00", "#99cc99", "#666699")
+heat_Temp_plot<-function(data){
+        q1<-ggplot(data, aes(date, Z, fill = Temp)) +
+                geom_raster() +
+                scale_y_reverse(limits=c(80,0), breaks=c(80,70,60,50,40,30,20,10,0)) +
+                scale_x_date(labels = date_format("%Y-%m"),
+                             date_labels = "%b %Y",
+                     date_breaks = "2 years") +
+                scale_fill_gradientn(colours = rev(ODV_colours2)) +
+                geom_contour(aes(z = Temp), binwidth = 2, colour = "black", alpha = 0.2) +
+                geom_contour(aes(z = Temp), breaks = 12, colour = "black", alpha = 0.5) +
+                        labs(y = "Depth (m)", x = NULL,
+                        fill = expression(paste("T° [C]"))) +
+                coord_cartesian(expand = FALSE)
+        return(q1)}
+
+#heat_Temp_plot(temp_raster)
+
+#ggsave(file="heat_Temp.jpg", height = 3, width = 18, dpi = 700,  type = "cairo",
+#path = "C:/Users/Vicho/Documents/Tesis/Figuras_ploteadas")
+```
+
+```{r heat_var - DSI, eval=FALSE}
+#Crucero | lat | long | date  | year | month | day  | hour | min  | Z | Temp | 
+# S | Fluor  |  O2  | NO3 |  NO2  | PO4  | DSI  | Z.ajus  |  SA | sigma | 
+# periodo  | subper | season | N_SI |  N_P
+ctd <- muestra.adj %>% mutate(date = make_date(year = year, month = month, day=15))
+
+ctd<- ctd %>%  filter(!is.na(DSI))
+
+ggplot(ctd, aes(x = date, y = Z, colour = DSI)) +
+  geom_point() +
+  scale_y_reverse() +
+  scale_colour_gradient2(
+    midpoint = 10, 
+    high = scales::muted("red"), 
+    low = scales::muted("blue")
+  )
+
+estimate_DSI_by_date <- function(target_date, target_depth) {
+  data_for_date <- ctd %>% 
+        filter(date == target_date) %>% arrange(Z)
+  approx(data_for_date$Z, data_for_date$DSI, xout = target_depth)$y
+}
+
+DSI_interp_depth <- crossing(
+  # the same dates as ctd
+  tibble(date = unique(ctd$date)),
+  # depths can now be any value
+  tibble(Z = seq(1, 80, length.out = 500))) %>%
+  group_by(date) %>%
+  mutate(DSI = estimate_DSI_by_date(date[1], Z))
+
+estimate_DSI_by_depth <- function(target_depth, target_date) {
+  data_for_depth <- DSI_interp_depth %>% 
+    filter(Z == target_depth) %>%
+    arrange(date)
+  approx(data_for_depth$date, data_for_depth$DSI, xout = target_date)$y
+}
+
+estimate_DSI_by_depth(
+  target_depth = 1, 
+  target_date = seq(ymd("2002-05-01"), ymd("2022-05-01"), by = 5)
+)
+
+DSI_raster <- crossing(
+  # dates can now be any value
+  tibble(date = seq(ymd("2002-05-01"), ymd("2022-05-01"), by = 2)),
+  # depths must be the same as in temp_interp_depth
+  tibble(Z = unique(DSI_interp_depth$Z))
+) %>%
+  group_by(Z) %>%
+  mutate(DSI = estimate_DSI_by_depth(Z[1], date))
+
+ODV_colours <- c("#feb483", "#d31f2a", "#ffc000", "#27ab19", "#0db5e6", "#7139fe", "#d16cfa")
+	
+ODV_colours2 <- c("#cc3300", "#ff6600", "#ffcc00", "#ffff00", "#99ff00", "#99cc99", "#666699")
+
+
+heat_DSI_plot<-function(data){
+q1<-ggplot(data, aes(date, Z, fill = DSI)) +
+        geom_raster() +
+        scale_y_reverse(limits=c(80,0), breaks=c(80,70,60,50,40,30,20,10,0)) +
+        scale_x_date(date_labels = "%b %Y",
+                     date_breaks = "2 years",
+                     date_minor_breaks = "2 years") +
+        scale_fill_gradientn(colours = rev(ODV_colours2)) +
+        geom_contour(aes(z = DSI), binwidth = 5, colour = "black", alpha = 0.2) +
+        geom_contour(aes(z = DSI), breaks = 15, colour = "black", alpha = 0.5) +
+        labs(y = "Depth (m)", x = NULL,
+             fill = expression(paste("DSi [",mu, "M]"))) +
+        coord_cartesian(expand = FALSE)
+return(q1)}
+
+#heat_DSI_plot(DSI_raster)
+
+#ggsave(file="heat_dsi.jpg", height = 3, width = 18, dpi = 700,  type = "cairo",
+#path = "C:/Users/Vicho/Documents/Tesis/Figuras_ploteadas")
+```
+
+```{r heat_var - N, eval=FALSE}
+#Crucero | lat | long | date  | year | month | day  | hour | min  | Z | Temp | 
+# S | Fluor  |  O2  | NO3 |  NO2  | PO4  | DSI  | Z.ajus  |  SA | sigma | 
+# periodo  | subper | season | N_SI |  N_P
+ctd <- muestra.adj %>% mutate(date = make_date(year = year, month = month))
+ctd<-mutate(ctd, N = (NO3+NO2))
+ctd<- ctd %>%  filter(!is.nan(N))
+ctd<- ctd %>%  filter(!is.na(N))
+
+ggplot(ctd, aes(x = date, y = Z, colour = N)) +
+  geom_point() +
+  scale_y_reverse() +
+  scale_colour_gradient2(
+    midpoint = 20, 
+    high = scales::muted("red"), 
+    low = scales::muted("blue")
+  )
+
+estimate_N_by_date <- function(target_date, target_depth) {
+  data_for_date <- ctd %>% 
+        filter(date == target_date) %>% arrange(Z)
+  approx(data_for_date$Z, data_for_date$N, xout = target_depth)$y
+}
+
+N_interp_depth <- crossing(
+  # the same dates as ctd
+  tibble(date = unique(ctd$date)),
+  # depths can now be any value
+  tibble(Z = seq(1, 80, length.out = 500))) %>%
+  group_by(date) %>%
+  mutate(N = estimate_N_by_date(date[1], Z))
+
+estimate_N_by_depth <- function(target_depth, target_date) {
+  data_for_depth <- N_interp_depth %>% 
+    filter(Z == target_depth) %>%
+    arrange(date)
+  approx(data_for_depth$date, data_for_depth$N, xout = target_date)$y
+}
+
+estimate_N_by_depth(
+  target_depth = 1, 
+  target_date = seq(ymd("2002-05-01"), ymd("2022-05-01"), by = 5)
+)
+
+N_raster <- crossing(
+  # dates can now be any value
+  tibble(date = seq(ymd("2002-05-01"), ymd("2022-05-01"), by = 2)),
+  # depths must be the same as in temp_interp_depth
+  tibble(Z = unique(N_interp_depth$Z))
+) %>%
+  group_by(Z) %>%
+  mutate(N = estimate_N_by_depth(Z[1], date))
+
+ODV_colours <- c("#feb483", "#d31f2a", "#ffc000", "#27ab19", "#0db5e6", "#7139fe", "#d16cfa")
+	
+ODV_colours2 <- c("#cc3300", "#ff6600", "#ffcc00", "#ffff00", "#99ff00", "#99cc99", "#666699")
+
+
+heat_N_plot<-function(data){
+q1<-ggplot(data, aes(date, Z, fill = N)) +
+        geom_raster() +
+        scale_y_reverse(limits=c(80,0), breaks=c(80,70,60,50,40,30,20,10,0)) +
+        scale_x_date(date_labels = "%b %Y",
+                     date_breaks = "2 years",
+                     date_minor_breaks = "2 years") +
+        scale_fill_gradientn(colours = rev(ODV_colours2)) +
+        geom_contour(aes(z = N), binwidth = 5, colour = "black", alpha = 0.2) +
+        geom_contour(aes(z = N), breaks = 15, colour = "black", alpha = 0.5) +
+        labs(y = "Depth (m)", x = NULL,
+             fill = expression(paste("N [",mu, "M]"))) +
+        coord_cartesian(expand = FALSE)
+return(q1)}
+
+#heat_N_plot(N_raster)
+
+#ggsave(file="heat_N.jpg", height = 3, width = 18, dpi = 700,  type = "cairo",
+#path = "C:/Users/Vicho/Documents/Tesis/Figuras_ploteadas")
+```
+
+```{r heat_var - PO4, eval=FALSE}
+#Crucero | lat | long | date  | year | month | day  | hour | min  | Z | Temp | 
+# S | Fluor  |  O2  | NO3 |  NO2  | PO4  | DSI  | Z.ajus  |  SA | sigma | 
+# periodo  | subper | season | N_SI |  N_P
+ctd <- muestra.adj %>% mutate(date = make_date(year = year, month = month))
+
+ctd<- ctd %>%  filter(!is.na(PO4))
+
+ggplot(ctd, aes(x = date, y = Z, colour = PO4)) +
+  geom_point() +
+  scale_y_reverse() +
+  scale_colour_gradient2(
+    midpoint = 2, 
+    high = scales::muted("red"), 
+    low = scales::muted("blue")
+  )
+
+estimate_PO4_by_date <- function(target_date, target_depth) {
+  data_for_date <- ctd %>% 
+        filter(date == target_date) %>% arrange(Z)
+  approx(data_for_date$Z, data_for_date$PO4, xout = target_depth)$y
+}
+
+PO4_interp_depth <- crossing(
+  # the same dates as ctd
+  tibble(date = unique(ctd$date)),
+  # depths can now be any value
+  tibble(Z = seq(1, 80, length.out = 500))) %>%
+  group_by(date) %>%
+  mutate(PO4 = estimate_PO4_by_date(date[1], Z))
+
+estimate_PO4_by_depth <- function(target_depth, target_date) {
+  data_for_depth <- PO4_interp_depth %>% 
+    filter(Z == target_depth) %>%
+    arrange(date)
+  approx(data_for_depth$date, data_for_depth$PO4, xout = target_date)$y
+}
+
+estimate_PO4_by_depth(
+  target_depth = 1, 
+  target_date = seq(ymd("2002-05-01"), ymd("2022-05-01"), by = 5)
+)
+
+PO4_raster <- crossing(
+  # dates can now be any value
+  tibble(date = seq(ymd("2002-05-01"), ymd("2022-05-01"), by = 2)),
+  # depths must be the same as in temp_interp_depth
+  tibble(Z = unique(PO4_interp_depth$Z))
+) %>%
+  group_by(Z) %>%
+  mutate(PO4 = estimate_PO4_by_depth(Z[1], date))
+
+ODV_colours <- c("#feb483", "#d31f2a", "#ffc000", "#27ab19", "#0db5e6", "#7139fe", "#d16cfa")
+	
+ODV_colours2 <- c("#cc3300", "#ff6600", "#ffcc00", "#ffff00", "#99ff00", "#99cc99", "#666699")
+
+
+heat_PO4_plot<-function(data){
+q1<-ggplot(data, aes(date, Z, fill = PO4)) +
+        geom_raster() +
+        scale_y_reverse(limits=c(80,0), breaks=c(80,70,60,50,40,30,20,10,0)) +
+        scale_x_date(date_labels = "%b %Y",
+                     date_breaks = "2 years",
+                     date_minor_breaks = "2 years") +
+        scale_fill_gradientn(colours = rev(ODV_colours2)) +
+        geom_contour(aes(z = PO4), binwidth = 0.5, colour = "black", alpha = 0.2) +
+        geom_contour(aes(z = PO4), breaks = 2, colour = "black", alpha = 0.5) +
+        labs(y = "Depth (m)", x = NULL,
+             fill = expression(paste("PO4 [",mu, "M]"))) +
+        coord_cartesian(expand = FALSE)
+return(q1)}
+
+#heat_PO4_plot(PO4_raster)
+
+#ggsave(file="heat_PO4.jpg", height = 3, width = 18, dpi = 700,  type = "cairo",
+#path = "C:/Users/Vicho/Documents/Tesis/Figuras_ploteadas")
+```
+
+
+```{r boxplot}
+
+```
+
+```{r Inventario}
+#https://stackoverflow.com/questions/41807913/get-area-size-from-geom-area-discrete-values/41810253
+
+inventorio_DSI<-function(data){
+        a<-data %>%
+                mutate(area_rectangle = abs(lead(Z.ajus) - Z.ajus) * pmin(DSI, lead(DSI)),
+                area_triangle = 0.5 * abs(lead(Z.ajus) - Z.ajus) * abs(DSI - lead(DSI))) %>%
+                summarise(area = sum(area_rectangle + area_triangle, na.rm = TRUE))
+        return(a$area)
+}
+
+inventorio_NO3<-function(data){
+        a<-data %>%
+                mutate(area_rectangle = abs(lead(Z.ajus) - Z.ajus) * pmin(NO3, lead(NO3)),
+                area_triangle = 0.5 * abs(lead(Z.ajus) - Z.ajus) * abs(NO3 - lead(NO3))) %>%
+                summarise(area = sum(area_rectangle + area_triangle, na.rm = TRUE))
+        return(a$area)
+}
+
+inventorio_NO2<-function(data){
+        a<-data %>%
+                mutate(area_rectangle = abs(lead(Z.ajus) - Z.ajus) * pmin(NO2, lead(NO2)),
+                area_triangle = 0.5 * abs(lead(Z.ajus) - Z.ajus) * abs(NO2 - lead(NO2))) %>%
+                summarise(area = sum(area_rectangle + area_triangle, na.rm = TRUE))
+        return(a$area)
+}
+
+inventorio_PO4<-function(data){
+        a<-data %>%
+                mutate(area_rectangle = abs(lead(Z.ajus) - Z.ajus) * pmin(PO4, lead(PO4)),
+                area_triangle = 0.5 * abs(lead(Z.ajus) - Z.ajus) * abs(PO4 - lead(PO4))) %>%
+                summarise(area = sum(area_rectangle + area_triangle, na.rm = TRUE))
+        return(a$area)
+}
+
+df_inventario<-function(data){
+#lrow<-length(unique(data$year))
+df <- data.frame(matrix(ncol = 6, nrow = 0))
+colnames(df) <-c("year", "season","DSI_invent","NO3_invent","NO2_invent","PO4_invent")
+for (i in min(data$year):max(data$year)) {
+for (k in c("Spring","Fall","Winter","Summer")){
+px<-filter(data,year==i)
+px<-filter(px,season==k)
+pdsi<-px %>% filter(!is.na(DSI))
+pno3<-px %>% filter(!is.na(NO3))
+pno2<-px %>% filter(!is.na(NO2))
+ppo4<-px %>% filter(!is.na(PO4))
+dsi<-inventorio_DSI(pdsi)
+no3<-inventorio_NO3(pno3)
+no2<-inventorio_NO2(pno2)
+po4<-inventorio_PO4(ppo4)
+df[nrow(df) + 1,] <- c(i, k,
+dsi=ifelse(is.null(dsi),NA,dsi),
+no3=ifelse(is.null(no3),NA,no3),
+no2=ifelse(is.null(no2),NA,no2),
+po4=ifelse(is.null(dsi),NA,po4))}}
+cols = c(1, 3, 4, 5, 6);
+df[,cols] = apply(df[,cols], 2, function(x) as.numeric(as.character(x)))
+return(df)
+}
+
+inventario<-df_inventario(muestra.adj.anual)
+
+```
+
+```{r SDT Inventario}
+sdt_inventario<-function(data){
+        op<- readline(prompt="Oprime\n 1 para DSI \n 2 para NO2 \n 3 para NO3\n 4 para PO4: ")
+        if (op==1){
+                g1<-ggplot(data, aes(x=year,y=DSI_invent))+
+                geom_line(color="royalblue4", size=1)+
+                geom_smooth(method=lm,se=F,
+                            linetype = "dashed",
+                            size=0.5,
+                            color="black")+
+                theme(strip.background = element_rect(color="black", fill="#61c2d7",
+                        size=1, linetype="solid"),
+                text = element_text(family = "Roboto",
+                                    size = 15,
+                                    color = "black"),
+                plot.title = element_text( family = "Lobster Two",
+                                           size = 20, 
+                                           face = "bold",
+                                           color = "#2a475e"))+
+                labs(title = "Pool DSi",
+                     y=expression(~Si(OH)[4]),
+                     x="Year")+
+                facet_wrap(~season)
+                return(g1)}
+        
+        else if (op==2){
+        g1<-ggplot(data, aes(x=year, y=NO2_invent))+
+                geom_line(color="royalblue3", size=1)+
+                geom_smooth(method=lm, se=F, linetype = "dashed", size=0.5, color="black")+
+                theme(strip.background = element_rect(color="black",
+                                                      fill="#61c2d7",
+                                                      size=1,
+                                                      linetype="solid"),
+                text = element_text(family = "Roboto", size = 15, color = "black"),
+                plot.title = element_text(family = "Lobster Two",
+                                          size = 20,
+                                          face = "bold",
+                                          color = "#2a475e"))+
+                labs(title = expression("Pool"~NO[2]),
+                     y=expression(~NO[2]),
+                     x="Year")+
+                facet_wrap(~season)
+                return(g1)}
+        
+        else if (op==3){
+                g1<-ggplot(data, aes(x=year, y=NO3_invent))+
+                geom_line(color="royalblue3", size=1)+
+                geom_smooth(method=lm, se=F, linetype = "dashed",
+                            size=0.5, color="black")+
+                theme(strip.background = element_rect(color="black",
+                                                      fill="#61c2d7",
+                                                      size=1,
+                                                      linetype="solid"),
+                text = element_text(family = "Roboto",
+                                    size = 15,
+                                    color = "black"),
+                plot.title = element_text(family = "Lobster Two",
+                                          size = 20,
+                                          face = "bold",
+                                          color = "#2a475e"))+
+                labs(title = expression("Pool"~NO[3]),
+                     y=expression(~NO[3]),
+                     x="Year")+
+                facet_wrap(~season)
+        return(g1)}
+
+        else if (op==4){
+                g1<-ggplot(data, aes(x=year, y=PO4_invent))+
+                geom_line(color="royalblue2", size=1)+
+                geom_smooth(method=lm, se=F, linetype = "dashed",
+                            size=0.5,
+                            color="black")+
+                theme(strip.background = element_rect(color="black",
+                                                      fill="#61c2d7",
+                                                      size=1,
+                                                      linetype="solid"),
+                text = element_text(family = "Roboto", size = 15, color = "black"),
+                plot.title = element_text(family = "Lobster Two",
+                                          size = 20,
+                                          face = "bold",
+                                          color = "#2a475e"))+
+                labs(title = expression("Pool"~PO[4]),
+                     y=expression(~PO[4]),
+                     x="Year")+
+                facet_wrap(~season)
+        return(g1)}
+
+        else if (op==99){
+                cat("Adios")
+                }
+        else
+        {print("valor incorrecto, intentalo nuevamente u oprime 99 para salir");
+                        sdt_inventario(data)}
+}
+
+#sdt_inventario(inventario)
+
+
+```
+
+```{r Relación Redfield}
+relacion_nred<-function (data, op){
+        data <- data %>%
+        mutate(date = make_date(year = year, month = month))
+        data$date <- decimal_date(data$date)
+        if (op==1){
+                g1<-ggplot(data, aes(x=date,y=N_SI))+
+                geom_point(color="royalblue4", size=1)+
+                geom_smooth(method=lm,se=F, size=0.8, color="black")+
+                ylim(0,10)+
+                theme(strip.background = element_rect(color="black",
+                        fill="#61c2d7",
+                        size=1,
+                        linetype="solid"),
+                text = element_text(family = "Roboto", size = 15, color = "black"),
+                plot.title = element_text(
+                        family = "Lobster Two",
+                        size = 20,
+                        face = "bold",
+                        color = "#2a475e"))+
+                labs(title = "N/Si", y=expression(~N/Si), x="Year")+
+                facet_wrap(~Z.ajus)
+        return(g1)}
+        else if (op==2){
+                g1<-ggplot(data, aes(x=date,y=N_P))+
+                geom_point(color="royalblue4", size=1)+
+                geom_smooth(method=lm,se=F,size=0.8, color="black")+
+                ylim(0,25)+
+                theme(strip.background = element_rect(color="black",
+                        fill="#61c2d7",
+                        size=1,
+                        linetype="solid"),
+                text = element_text(family = "Roboto", size = 15, color = "black"),
+                plot.title = element_text(family = "Lobster Two",
+                        size = 20,
+                        face = "bold",
+                        color = "#2a475e"))+
+                labs(title = "N/P", y=expression(~N/P), x="Year")+
+                facet_wrap(~Z.ajus)
+        return(g1)}}
+
+#relacion_nred(muestra.adj,1)
+```
+
+```{r Climatografía }
+plot_climato<-function(data){
+cc <- scales::seq_gradient_pal("darkblue", "coral", "Lab")(seq(0,1,length.out=3))
+g1 <- ggplot(data ,aes(x =Z.ajus, y = valor, color=variable))+
+geom_point()+
+geom_line()+
+scale_y_continuous(breaks = seq(0,45,10))+  #DSI
+scale_x_reverse(breaks = seq(0,100,20))+  # depth
+theme_bw()+
+theme(axis.text = element_text(size = 12, colour = 1),
+axis.title = element_text(size = 14, colour = 1))+
+labs(y = expression(~Si(OH)[4]),
+x = expression(~Depth~(m)),
+color="Variable")+
+coord_flip()+
+scale_colour_manual(values=cc)+
+facet_wrap(~month)
+return(g1)}
+#plot_climato(df_long)
+
+plot_climato_z<-function(data){
+cc <- scales::seq_gradient_pal("darkblue", "coral", "Lab")(seq(0,1,length.out=3))
+g1 <- ggplot(data ,aes(x =month, y = valor, color=variable))+
+geom_point()+
+geom_line(size=1.2)+
+scale_y_continuous(breaks = seq(0,45,10))+  #DSI
+scale_x_continuous(breaks = seq(1,12,1))+  # depth
+theme_bw()+
+theme(axis.text = element_text(size = 12, colour = 1),
+axis.title = element_text(size = 14, colour = 1))+
+labs(y = expression(~mmol),
+x = expression(~Mes),
+color="Variable")+
+#coord_flip()+
+scale_colour_manual(values=cc)+
+facet_wrap(~Z.ajus)
+return(g1)}
+
+
+#plot_climato_z(df_long)
+#ggsave(file="climato_var_z.jpg", height = 8, width = 10, dpi = 500,
+       #type = "cairo",path = "C:/Users/Vicho/Documents/Tesis/Figuras_ploteadas")
+
+plot_climato_mes<-function(data){
+cc <- scales::seq_gradient_pal("darkblue", "coral", "Lab")(seq(0,1,length.out=3))
+isopic<-climato_df%>%group_by(month)%>%filter(abs(sigma-26.3)==min(abs(sigma-26.3)))
+g1 <- ggplot(data ,aes(x =Z.ajus, y = valor, color=variable))+
+geom_point()+
+geom_line(size=1.2)+
+geom_vline(data=isopic, aes(xintercept=Z.ajus))+
+scale_y_continuous(breaks = seq(0,45,10))+  #DSI
+scale_x_reverse(breaks = seq(0,100,20))+  # depth
+theme_bw()+
+theme(axis.text = element_text(size = 12, colour = 1),
+axis.title = element_text(size = 14, colour = 1))+
+labs(y = expression(~mmol),
+x = expression(~Depth~(m)),
+color="Variable")+
+coord_flip()+
+scale_colour_manual(values=cc)+
+facet_wrap(~month)
+return(g1)}
+#plot_climato_mes(df_long)
+```
+
+```{r hetmap Z-DSI, OBSOLETO, eval=FALSE}
+heat_var<-function(data){
+ctd <- data %>%
+mutate(date = make_date(year = year, month = month))
+ctd<-ctd %>% filter(!is.na(DSI))
+ctd <- ctd %>%
+mutate(Z  = -Z) %>%  # Correct for plotting
+dplyr::select(date, Z, DSI)
+ODV_colours <- c("#feb483", "#d31f2a", "#ffc000", "#27ab19", "#0db5e6", "#7139fe", "#d16cfa")
+ctd$date <- decimal_date(ctd$date)
+# Now we may interpolate the data
+ctd_mba <- mba.surf(ctd, no.X = 2000, no.Y = 2000, extend = T)
+dimnames(ctd_mba$xyz.est$z) <- list(ctd_mba$xyz.est$x, ctd_mba$xyz.est$y)
+ctd_mba <- melt(ctd_mba$xyz.est$z, varnames = c('date', 'Z'), value.name = 'DSI') %>%
+filter(Z < 0) %>%
+mutate(DSI = round(DSI, 1))
+g1<-ggplot(data = ctd_mba, aes(x = date, y = Z)) +
+geom_raster(aes(fill = DSI)) +
+scale_fill_gradientn(colours = rev(ODV_colours)) +
+geom_contour(aes(z = DSI), binwidth = 5, colour = "black", alpha = 0.2) +
+geom_contour(aes(z = DSI), breaks = 15, colour = "black", alpha = 0.5) +
+### Activate to see which pixels are real and not interpolated
+#geom_point(data = ctd, aes(x = date, y = Z.ajus),
+#colour = 'black', size = 0.2, alpha = 0.4, shape = 8) +
+labs(y = "depth (m)", x = NULL, fill = "DSI") +
+coord_cartesian(expand = 0)
+return(g1)
+}
+heat_var(muestra.adj)
+
+#ggsave(file="heat_p1.jpg", height = 6, width = 20, dpi = 700,  type = "cairo",
+#path = "C:/Users/Vicho/Documents/Tesis/Figuras_ploteadas")
+        
+```
+
+
+
+```{r clases UDEMi, eval=FALSE}
+
+cantidad <- c(3,5,7,10)
+for (i in cantidad){
+        print(i*2)
+}
+
+n<-1
+while (n <= 10){
+        print(paste("El numero es ", n))
+        n <- n+1
+}
+
+file.choose() # para buscar directorios
+
+export(iris, "iris.xlsx") #para exportar la info a excel
+
+tib <- tibble(a= 1:3,
+              b=c("a","b","c"),
+              c= factor(c(0,1,2)))  ## tipo df pero más bacan
+
+
+##Ejemplo del pipe
+#sin pipe 
+round(log(sqrt(27)))
+#con pipe
+27 %>% sqrt %>% log %>% round
+
+
+#Ejemplo del pipe con asignación
+x <- 10
+x <- x+4
+
+y<-10
+y%<>% + 4
+ 
+#Otro ejemplo del pipe con asignación
+d <- tibble (n=1:10,
+             e=11:20)
+
+d$n %<>% +3  #no es necesario volver a llamar a la columnda para editarla
+
+## tidiverse functions
+
+# function select
+iris %>% select(Sepal.Length) #col especifica
+iris %>% select(1:3) # col 1 a la 3
+iris %>% select(-2) # todas las col menos la 2
+
+#function filter
+trees %>%
+        filter(Height>80 &
+                       Volume > 50)
+
+#function slice
+CO2 %>% slice(1:20)
+CO2 %>% slice_head(n=3)
+CO2 %>% slice_tail(n=5)
+CO2 %>% slice_min(conc)
+CO2 %>% slice_max(conc)
+CO2 %>% slice_sample(n=13)
+
+## oprimir f1 para ver la ayuda de una funcion
+
+co2## la serie de tiempo de co2
+
+#fuction rename
+iris2<- iris %>% rename (sep_l = Sepal.Length)
+
+# function map
+#solo a vectores o listas, no DF
+a <- list(c(1,2,3),
+          c(4,6,4),
+          c(9,2,7))
+
+a %>% map(mean) # me hace la funcion en todos los componentes de la lista
+
+b <- list(iris,
+          mtcars,
+          trees)
+b %>% map(~slice(.x, 1:5)) #el ~ es porque si van argumentos, el .x hace referencia a cada elemento que tomara map
+
+# for loops
+a <- list(iris, trees, CO2)
+
+fin<-list()
+for (i in 1:length(a)){
+    fin[[i]]  <-  a[[i]] %>%
+            dplyr::select(1) %>%
+                slice(1:10)
+}
+
+#mismo ejemplo con map
+fin_map <- a %>% 
+        map(~dplyr::select(.x,1)) %>%
+        map(~slice(.x, 1:10))
+        
+
+
+
+
+
+##loops aplicado 2
+ruta<-list.files(path = "C:\\Users\\Vicho\\Downloads\\archivos_curso\\loop\\loop", pattern= "xlsx", full.names = T) 
+##funcion para abrir multiples archivos, la aprte de pattern engancha segun algun patron en el nombre, por ejemplo l aextensión
+
+d <- ruta %>% map(read_xlsx)
+
+nombres <- list.files(path = "C:\\Users\\Vicho\\Downloads\\archivos_curso\\loop\\loop", pattern= "xlsx", full.names = F) %>%
+        str_remove_all("datos_") %>% str_remove_all(".xlsx")
+                
+
+for (i in 1:length(d)){
+    w <- d[[i]] %>%
+            dplyr::select(1) %>%
+                slice(1:10)
+    
+    #ahora se exportan en carpeta definida con los nombres especificos de cada excel
+        rio::export(w, 
+                    paste("C:\\Users\\Vicho\\Downloads\\archivos_curso\\",
+                          nombres[i],
+                        ".xlsx",
+                        sep=""))
+}
+
+
+# ahora con map
+# map2 permite dos argumentos (.x, .y, .f) como ya se especificó el .x por los pipes, se define el .y y el .f
+d %>% map(~dplyr::select(.x,1)) %>%
+        map(~slice(.x, 1:10)) %>%
+        map2(nombres, ~export(.x, paste("C:\\Users\\Vicho\\Downloads\\archivos_curso\\",
+                          .y,
+                        ".xlsx",
+                        sep="")))
+
+
+
+
+## summarise y group_by
+iris %>% group_by(Species)%>%
+        summarise(prom=mean(Sepal.Length),
+                  mediana= median(Sepal.Length))
+
+iris %>% group_by(Species)%>%
+        summarise_at(c("Sepal.Length","Sepal.Width"),
+                     list(prom=mean, SD = sd, median =median))
+
+iris %>% group_by(Species)%>%
+        summarise_all(list(prom=mean, SD = sd, median =median))
+
+
+### fechas
+#si tengo una columna de fechas con horas y solo quierno ymd se pone (archivo se llama d)
+d2 <- d %>%
+        mutate(fecha = ymd(fecha))
+
+# funcion inner_join para unir bases de datos
+i <- iris %>% tibble
+
+d <- tibble(especie = factor(c("setosa", "versicolor", "virginica")),
+            color = c("roja", "verde", "amarilla"))
+
+#ahora le vamos a unir el color a la tabla i
+
+dat <- d %>% inner_join(i, by = c("especie" = "Species")) ## si ambas columnas se llamaran igual se podria sacar el by=
+
+
+## snippets para guardar partes de codigo
+#tools > global options > code
+# se recomienda guardar el snipet con aa_ o lo que sea
+# dentro del codigo en el snippet se puede poner ${1:variable} para que al correr el snippet se enchule al tiro ahí (#ejemplo en aa_readexcel)
+#aa_ggsave 
+ 
+
+
+## Datos vectoriales ocupar paquete sf 
+# read_sf para cargar shpfile
+file.choose()
+congui <- read_sf("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\3_Vectores\\1\\conguillio.shp")
+ap <- read_sf("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\3_Vectores\\2\\snaspe.shp") %>%
+        clean_names ## los nombres venian medios desordenados entre mayusculas y minusculas, con clean names quedan parecidas
+
+ap %<>% dplyr::select(-1,-3) # scamos las columnas 1 y 3
+
+ap %<>% mutate(across(2:5, factor)) # convertimos en factor las columnas 2:5
+
+ta <- ap %>% st_set_geometry(NULL) ##se removió la geometría, parametros de los vectores, para rescatar la tabla de atributos (ta)
+ta %>% diagnose_category %>% filter(variables == "region") ## nos muestra la cantidad de areas protegidas por región eg. 24 en magallanes
+
+ta %>% diagnose_category %>% filter(variables == "tipo_snasp") ## nos muestra los tipos de areas protegidas, eg 59 reservas
+
+## diagnose_category nos entrega información por variable escogida
+
+
+
+## limpieza de grandes bases de datos
+ice <- read_sf("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\3_Vectores\\3\\glaciares_chile.shp") %>% 
+        remove_empty("cols") ## remueve columnas vacias
+
+ta_ice <- ice %>% st_set_geometry(NULL)
+view(diagnose(ta_ice))
+
+borr <- diagnose(ta_ice) %>% 
+        filter(unique_count==1) %>% 
+        pull(variables) ## al hacer el view(diagnose(ta_ice)) se pueden ver muchas columnas solo con 1 dato, eso quiere decir que n aportna en nada
+                                        ## con esta función seleccioné esas columnas y las extraigo como vector con pull()
+
+ice %<>% dplyr::select(-c(borr)) ## aquí le borré las columnas
+
+borr2 <- colnames(ice) %>% str_subset("id") # elegiré todas las columnas con id, porque no aportan información
+ice %<>% dplyr::select(-c(borr2))
+ice %<>% dplyr::select(-"area", -"system_ind")
+
+ice %<>% rename(nombre = glac_name,
+                estado = glac_stat,
+                area = db_area) 
+
+
+## cambiar el crs code reference sismtem
+
+congui1 <- congui
+browseURL("http://mundivideo.com/coordenadas.htm") ##para ver donde está alguna zona, poblado etc
+
+browseURL("https://spatialreference.org/") # para ver que sistema de referencia me sirve
+
+# EPSG : 32719 para conguillio
+
+congui1 %<>% st_transform(crs = 32719)
+
+
+## filtros
+ap1 <- ap
+
+magallanes <- ap1 %>% 
+  filter(cod_region == 12)   ## aquí se filtró la region de magallanes
+
+#plot(magallanes[,6])
+
+pa <- ap1 %>% 
+  filter(tipo_snasp == "Parque" & ##aquí se filtraron los parques
+           cod_region == 10) %>%  ##de la decima región 
+  slice_max(st_area_sh, n=1)      ##y aquí el de mayor área, solo el mayor (n=1)
+
+mapview::mapview(pa)
+
+
+#guardar shp
+write_sf(pa,"corcovado.shp")
+
+
+
+
+## unir shapfiles
+path_shp <- list.files(path = "C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\3_Vectores\\6",
+                       full.names = T,
+                       pattern = "shp") ## nos creará una lista con todos los archivos con shp
+
+shp <- path_shp %>% map(read_sf) ##crea una lista de los shp ya abiertos
+
+shp_final <- bind_rows(shp) ##unimos los shp, fijarse de que tengan los mismos nombres de columna
+
+
+write_sf(shp_final,"ptos.shp")
+
+
+## convertir CSV a SHP
+ 
+pto <- read.csv("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\3_Vectores\\7\\ptos.csv") %>% 
+        st_as_sf(coords=c(2,3), crs = "+proj=utm +zone=19 +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs")
+                ## coords 2,3 porque es x,y el formato
+mapview(pto)
+write_sf(pto,"ptos.shp")
+
+
+###descarga de datos vectoriales
+getData("ISO3")
+
+paraguay <- getData(name= "GADM", country = "PRY", level=1) %>%  ## GADM global administrative, base de datos de los vectores.
+               st_as_sf                                         ## el level indica el nivel de los vectores, 1 es más detallado, en el caso de chile son las regiones
+
+plot(paraguay[1,1])
+mapview(paraguay[1,1])
+
+write_sf(paraguay, "par.shp")
+
+
+### dibujar geometrias y exportarlas
+
+poli <- mapview() %>% 
+        editMap()
+
+write_sf(poli$drawn, "poli.shp") ### el $drawn es la geometría como tal
+
+
+## convertir archivos GPS a SHapelfile
+
+pto <- readGPX("C:\\Users\\Vicho\\Documents\\Torres_del_Paine\\Trekking_Torres_del_Paine.gpx")[[3]] %>%  ## cargue el gpx y escogí solo los waypoint [[3]]
+        tibble %>% ## lo convierto en tibble
+        st_as_sf(coords = c(1,2), ##lo convierto a shp y lon=x, lat=y
+                 crs = 4326) %>% 
+        mutate(time = time %>% ymd_hms(tz = "Chile/Continental")) %>% # ajusto los datos de horario a la sona horaria (TZ) 
+        dplyr::select(-sym) ## eliminé la columna sym
+
+OlsonNames() ## para saber que TZ necesito ocupar
+mapview(pto)
+write_sf(pto,"pto_gps.shp")
+
+### Raster
+# el paquete raster tiene 3 tipos de objetos, RasterLayer, RasterStack y RasterBrick, don Layer es una sola capa de variable,
+# Stack es una colección de Layer con la misma extensión espacial y resolución. Es una lista de objetos RasterLayer
+# Brick es un objeto multicapa. Procesar un brick puede ser más eficiente que procesar un RasterStack. Un ejemplo clásico son las imagenes salelitales
+# multibanda o una salida de un modelo climático global.
+lulc <- raster("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\1\\lulc.tif")
+plot(lulc)
+
+# cambiar el CRS
+#este es un raster continuo
+ndvi <- raster("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\6\\ndvi.tif") %>% 
+        projectRaster(crs = 4326)
+
+
+# raster discreto
+
+lulc <- raster("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\1\\lulc.tif") %>% 
+  projectRaster(crs = 4326, method = "ngb") ## metodo neirest neigtboord, o como se escriba, y es porque es discreto, fundamental si no queda la caga
+
+lulc %>% values %>% na.omit %>%  unique
+
+## calculos con raster
+dem <- raster("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\3\\dem.tif")
+
+dem2 <- dem/2 # valores divididos por 2, una prueba no ma
+
+dem3 <- dem + dem2 # otro ejemplo
+
+dem %>% values %>% mean
+dem %>% values %>% sumary
+
+dem4 <- (dem - min(values(dem)))/(max(values(dem))-min(values(dem))) #normalizado entre 0 - 1
+dem5 <- (dem - minValue(dem))/(maxValue(dem)-minValue(dem))  ## con las funciones propias del paquete raster
+
+## rasterizar un vector
+parches <- read_sf("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\4\\parches.shp")
+
+r <- raster(resolution = c(30,30), ## establesco la resolución del pixel en un raster vacio
+            crs = crs(parches),  ## extraigo el crs del vector
+            ext = extent(parches))  ## extraigo la extension del vector
+
+par_ras <- rasterize(parches, r, field = parches$area) ## rasterizo y el campo field le chanto el área, porque no hay más atributos
+plot(par_ras)
+writeRaster(par_ras,"parch.tif")
+
+
+## raster a vector
+lulc <- raster("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\5\\lulc.tif")
+shp <- rasterToPolygons(lulc, dissolve = T) %>% st_as_sf ## puedo añadir disaggregate antes de st_as.. para que queden los poligonos separados, así como                                  si un pixel esta guacho, queda como poligono solo
+plot(shp)
+
+## reclasificar raster
+# valores discretos
+lulc <- raster("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\6\\lulc.tif")
+plot(lulc)
+
+cambio <- cbind(c(1,2,3),
+                c(1,2,2))  # matrix que me permitirá indicar que quiero que la categoría 2 y 3 sean la misma
+
+reclass <- reclassify(lulc, rcl = cambio) # función para reclasificar raster discreto, rcl será la regla, en este caso, la matriz
+plot(reclass)
+
+# valores continuos
+ndvi <- raster("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\6\\ndvi.tif")
+plot(ndvi)
+
+ndvi %>%  values %>%  summary ## aquí se extraen los valores minimos, medias, cuartiles etc
+
+m <- c(0, 0.2850, 1,       #del minimo al 1 cuartil será 1
+       0.2850, 0.3623, 2,  #del 1 cuartil a la media será 2
+       0.3623, 0.4310, 3,  #de la media al 3 cuartil será 3
+       0.4310, 1, 4)       #del 3 cuartil al maximo será 4
+
+mat <- matrix(m, ncol=3, byrow=T) #convertimos el vector anterior a matrix
+
+reclass <- reclassify(ndvi, mat)  # reclasificamos con la matrix anterior
+plot(reclass)
+
+
+
+#### Crear una máscara
+ndvi <- raster("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\8\\ndvi.tif")
+ndvi2 <- ndvi
+
+ndvi2[ndvi < 0.5] <- NA ## se filtraron todos los pixeles menores a 0.5, nos quedamos con los valores más grandes
+plot(ndvi2)
+
+ndvi2[ndvi < 0.5 | ndvi2 > 0.7] <- 1 ## se filtraron todos los pixeles menores a 0.5 o menores a 0.7, les asigno un valor fuera de la norma, eg, 1
+plot(ndvi2)
+
+
+
+
+## resampling, cambio de resolución
+lulc <- raster("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\7\\lulc.tif") # raster con resolución 10*10 metros
+
+r <- raster(resolution = c(50,50),
+            crs = crs(lulc),
+            ext = extent(lulc))
+
+res_lulc <- resample(lulc, r, method = "ngb") ## para raster continuio se omite el method
+
+plot(res_lulc)
+
+
+### cortar raster con archivo vectorial
+
+ndvi <- raster("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\8\\ndvi.tif")
+area <- read_sf("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\8\\area.shp")
+plot(ndvi)
+mapview(area)
+
+ndvi2 <- ndvi %>%  crop(area) %>% mask(area) ## con mask nos aseguramos de cortar bien
+
+##ejercicio 1
+par <- read_sf("C:\\Users\\Vicho\\Documents\\Pegas Extra\\Lipangue\\area.shp")
+lip <- raster("C:\\Users\\Vicho\\Documents\\Pegas Extra\\Lipangue\\DEM\\DEM_Lipangue.tif")%>% 
+        projectRaster(crs = crs(par)) ## importante que tengan el mismo crs
+
+lip2 <- lip %>%  crop(par)  %>% mask(par)  ## con mask nos aseguramos de cortar bien
+
+
+#### extraer info de un raster
+ndvi <- raster("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\10\\ndvi.tif")
+dem <- raster("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\10\\dem.tif") %>% 
+        projectRaster(crs = crs(ndvi))
+ptos <- read_sf("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\10\\ptos_ext.shp")
+
+ptos_ndvi <- ndvi %>%  raster::extract(ptos)
+ptos_dem <- dem %>% raster::extract(ptos)
+
+ptos_info <- tibble(id = ptos$id,
+                    ndvi = ptos_ndvi,
+                    altitud = ptos_dem)  ## se crea un tibble con el id, ndvi y altitud para los puntos de interes
+
+cor(ptos_info[,-1]) ## aquí se ve la relacion entre el ndvi y la altitud
+
+ptos_info %>% ggplot(aes(x=altitud, y=ndvi))+
+        geom_line()+
+        stat_smooth(method = "lm", se=F)  ## grafico para mostrar mejor lo anterior
+
+
+### analizar y leer archivos NetCDF
+
+pp <- brick("C:\\Users\\Vicho\\Downloads\\archivos_curso\\CR2MET_pr_v2.0_mon_1979_2019_005deg.nc")
+pp[[1]] %>% plot
+
+cl <- raster::getData(name = "GADM", country = "CHL", level = 1) 
+cl %<>% st_as_sf %<>% filter(NAME_1 == "Región Metropolitana de Santiago")
+
+pp_rm <- pp %>% 
+        crop(cl) %>%
+        mask (cl)
+
+
+# ahora creamos un tibble para seleccionar las bandas especificas
+mes <- 1:12 %>% rep(41) # son 41 años, así repito la secuencia por todos los años
+
+yr <- 1979:2019 # vector de los años
+
+years <- yr %>%     
+  map(~rep(.x,12)) %>%  #repetir la secuencia 12 veces, así tendremos 12 veces cada año, para cada mes
+  unlist  # lo sacamos de la lista y lo dejamos como vector
+
+d <- tibble(year = years,
+            mes = mes,
+            id = 1:length(mes))  ## creamos un tibble con los años, meses y id de 492 valores
+
+n <- d %>% 
+  filter(mes == 7) %>% 
+  dplyr::select(id) %>% 
+  pull  ## quiero un vector con los id (o numero de banda) de la precipitacion en todos los años para julio
+
+jul <- pp_rm[[n]] ## creo un rasterbrick solo con las bandas de Julio de precipitacion
+
+nam <- "jul" %>% paste(1979:2019, sep = "_") ## vector para cambiar el nombre a las bandas para hacerlas más legibles
+
+names(jul) <- nam ##les asigno el nombre
+
+jul %>% boxplot ## boxplot de las precipitaciones
+
+
+
+#Crear loop para obtener precipitacion promedio de julio de todos los años
+
+t <- c()   ## vector vacio para respatar valores
+for(i in 1:nlayers(jul)){  
+        
+  t[i] <- jul[[i]] %>%
+          values %>%
+          mean(na.rm = T)
+}  ## para cada valor i entre los nlayer (años) que me rescate el promedio
+
+s <- tibble(year = 1979:2019,
+            pp = t)  ## tibble con los años y promedio
+
+# Crear grafico precipitacion promedio julio ------------------------------------------------------------------------------------------
+
+ggplot(s, aes(x = year, y = pp)) + 
+  geom_line() +
+  stat_smooth(method = "lm", se = F, size = 1) +
+  labs(y = "Precipitación acumulada (mm)", x = "Año", 
+       title = "Precipitación acumulada promedio mes de julio (1979-2019)",
+       subtitle = "Región Metropolitana, Chile") +
+  theme_bw() +
+  theme(plot.title = element_text(face="bold", size=14, hjust = 0.5),
+        axis.title.y = element_text(face = "bold"),
+        axis.title.x = element_text(face = "bold"),
+        axis.text.y = element_text(face="bold", size=11, color = "black"),
+        axis.text.x = element_text(face="bold", size=11,color = "black"))
+
+
+### estadisticas zonales
+
+tmax <- raster("C:\\Users\\Vicho\\Downloads\\archivos_curso\\tmax_dic_19.tif")
+
+plot(tmax)
+
+cl <- raster::getData(name = "GADM", country = "CHL", level = 1) %>% 
+  st_as_sf %>% 
+  dplyr::select(NAME_1)  ## descarga del shp de chile con las regiones (level 1)
+
+ex <- raster::extract(tmax, cl, fun ='mean', na.rm=T, df=T, weights = T) ## con esta función se extrae, en este caso, el promedio de las máximas temperaturas por cada poligono de cl, es decir, cada región. df=T me retorna la info en un df
+
+f <- cl %>% 
+  mutate(ID = 1:nrow(.)) %>%  ## hasta aquí estoy creanod una variable f que es cl con una columna llamada ID con los numeros de las regiones
+  inner_join(ex) ## ahora la uno a mi df de los promedios, para saber las regiones con nombre
+
+ggplot() +
+  geom_sf(data = f, aes(fill = tmax_dic_19)) +  ## como es un vector se ocupa geom_sf, del data f y se llena con la temperatura
+  theme_bw() +
+  labs(y="", x="",  title="Temperatura máxima promedio diciembre 2019") +
+  coord_sf(xlim = c(-80,-60)) + ## se establece los limites de cordenadas
+  scale_fill_viridis_c() +  ## la escala bonita
+  theme(legend.background = element_rect(color = "black"),
+        plot.title = element_text(face="bold", hjust = 0.5))
+
+
+
+
+
+
+
+
+
+### conectar R con GE engine (video 66)
+
+remotes::install_github('r-spatial/rgee')
+library(rgee)
+ee_install()
+ee_Initialize()
+
+# 0) CARGAR PAQUETES Y GEE ------------------------------------
+pacman::p_load(sf, raster, rgee, tidyverse) ;ee_Initialize()
+
+# 1) CARGAR SHP -----------------------------------------------
+
+zona <- read_sf("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\11\\zona.shp") %>% 
+  st_transform(crs ="+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs +towgs84=0,0,0") ## zona de estudio
+
+# 2) CREAR RECTANGULO DEL SHP ------------------------------
+
+co <- extent(zona)  # extraigo las extensiones de la zona
+
+box <- ee$Geometry$Rectangle(coords = c(co[1],co[3], co[2],co[4]), #xmin ymin xmax ymax
+                             proj = "EPSG:4326",
+                             geodesic = FALSE)  ## aqui se creo un rectangulo para que GEE entienda las cordenadas, CO[x] vendrian a ser las cordenadas
+
+
+# 3) BUSCAR DEM -----------------------------------------------
+
+dem <- ee$Image("USGS/SRTMGL1_003")$clip(box) ##comando para extraer dem, lo que esta en "" es propio de GEE, clip es para cortar a las medidas de box
+
+Map$centerObject(eeObject = box, zoom = 15) ##
+
+Map$addLayer(eeObject = dem)
+
+# 4) DESCARGAR DEM -------------------------------------
+
+dem_rast <- dem %>%
+  ee_as_raster(region = box,
+               scale = 30,)
+
+plot(dem_rast)
+
+# 5) GUARDAR RASTER EN CARPETA -----------------------
+
+raster::writeRaster(dem_rast,"dem.tif")
+
+
+
+
+
+## leer imagen landsat 8
+
+ruta <- list.files(path="C:\\Users\\Vicho\\Downloads\\archivos_curso\\LC08_L2SP_233086_20230203_20230209_02_T1\\",
+                  full.names = T, pattern = "SR_B")
+
+r <- ruta %>% map(raster) %>% stack ## al aplicar stack guardamos todas las mandas en un RasterStack, un unico elemento
+
+names(r) <- paste("B", 1:7, sep="")
+
+plot(r)
+
+plotRGB(r, 4,3,2, scale=65454) ## combinación de bandas color verdadero. En Scale se pone el maximo valor de las bandas (summary(r))
+
+mapview(r[[1]], na.color = NA)
+mapview(r[[1]], na.color = NA, maxpixels =  58766931) ## alternativa para ver todos los pixeles, se puede demorar caleeeta
+
+# calculo de indices
+
+poli<- mapview(r[[1]]) %>%  #visualizo la primera banda
+        editMap()   # dibujaré un poligono
+
+area <- poli$drawn %>% 
+        sf::st_transform(crs(r)) ## extraje solo la geometría y ajuste el crs a r
+
+img <- r %>% 
+        crop(area) %>% 
+        mask(area)   #ahora cortamos r al polígono
+
+mapview(img[[2]]) ## probando el corte
+
+img2 <- img * 0.0000275 - 0.2  #factor de escala (sruface refñectance para collection 2)
+
+## hay valores que pueden quedar fuera del rango 0:1 esto es por los cuerpos de agua, para corregir esto se hace:..
+
+img2[img2 < 0 ] <- 0
+
+img2[img2 > 1 ] <- 1
+
+i <- stack(img2)
+
+ndvi <- (img2[[5]]-img2[[4]])/(img2[[5]]+img2[[4]])
+plot(ndvi)
+mapview(ndvi, na.color=NA)
+ndvi <- ndvi %>% projectRaster(crs=32719)
+
+mndwi <- (img2[[3]]-img2[[6]])/(img2[[3]]+img2[[6]])
+
+savi<- (img2[[5]]-img2[[4]])/(img2[[5]]+img2[[4]]+0.5)*1.5
+plot(savi)
+
+
+
+
+
+## Calcular NDVi con sentinel-2
+
+area<-read_sf("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\9\\area_est.shp")
+
+red <- raster("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\9\\B04_10m.jp2") %>% 
+  crop(area) %>%
+        mask(area)
+
+nir <- raster("C:\\Users\\Vicho\\Downloads\\archivos_curso\\curso_st_R_1\\4_Raster\\9\\B08_10m.jp2") %>% 
+  crop(area) %>%
+        mask(area)
+
+ndvi <- ((nir/10000 - red/10000)/(nir/10000 + red/10000)) ## se dividen en 10.000 porque los datos vienen escalados en 10.000
+
+plot(ndvi)
+
+
+
+
+
+
+
+
+
+file.choose()
+
+mapview(par) + 
+mapview(lip2)
+
+summary(ap)
+
+head(ap)
+
+
+
+
+
+
+
+```
+
