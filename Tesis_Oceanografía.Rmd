@@ -393,7 +393,7 @@ S1<-subset(df_season, subper== 3)
 ```{r perfil basico ZvsParametro}
 cc <- scales::seq_gradient_pal("darkblue", "coral", "Lab")(seq(0,1,length.out=6))
 plot_var<-function(data){
-        g1 = ggplot(data = data,aes(x =Z.ajus, y = DSI, group=factor(subper)))+
+        g1 <- ggplot(data = data,aes(x =Z.ajus, y = DSI, group=factor(subper)))+
                 geom_point(aes(color=factor(subper)), size=0.8)+
                 geom_line(data=data[!is.na(data$DSI),],aes(color=factor(subper)), size=0.7)+
                 scale_y_continuous(breaks = seq(0,45,10))+  #DSI
